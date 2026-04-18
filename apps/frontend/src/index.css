@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Modern soft-dark theme with subtle blue tint */
+    --background: 224 15% 10%;
+    --foreground: 220 10% 93%;
+
+    --card: 224 15% 13%;
+    --card-foreground: 220 10% 93%;
+
+    --popover: 224 15% 15%;
+    --popover-foreground: 220 10% 93%;
+
+    --primary: 230 75% 62%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 224 15% 16%;
+    --secondary-foreground: 220 10% 85%;
+
+    --muted: 224 12% 19%;
+    --muted-foreground: 220 10% 58%;
+
+    --accent: 230 40% 22%;
+    --accent-foreground: 220 10% 93%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 224 12% 22%;
+    --input: 224 12% 17%;
+    --ring: 230 75% 62%;
+
+    --radius: 0.5rem;
+
+    /* Design tokens */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-full: 999px;
+
+    /* Surface elevation levels */
+    --surface-0: 224 15% 10%;
+    --surface-1: 224 15% 13%;
+    --surface-2: 224 15% 16%;
+    --surface-3: 224 15% 19%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* モバイルでのスムーズスクロール */
+  @media (max-width: 768px) {
+    .overflow-x-auto {
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .overflow-x-auto::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  /* ドロップダウン (select / option) のダークテーマ対応 */
+  select {
+    color-scheme: dark;
+  }
+  select option {
+    background-color: hsl(224 15% 15%);
+    color: hsl(220 10% 93%);
+  }
+  select optgroup {
+    background-color: hsl(224 15% 12%);
+    color: hsl(220 10% 70%);
+  }
+}

@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "teams" ADD COLUMN     "spDaysRatio" DOUBLE PRECISION NOT NULL DEFAULT 1.0;

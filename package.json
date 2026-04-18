@@ -1,0 +1,31 @@
+{
+  "name": "scrum-all-in-one",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel run dev",
+    "dev:backend": "pnpm --filter backend dev",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "build": "pnpm --recursive run build",
+
+    "supabase:start": "npx supabase start",
+    "supabase:stop": "npx supabase stop",
+    "supabase:reset": "npx supabase db reset",
+    "supabase:status": "npx supabase status",
+    "supabase:studio": "echo \"Supabase Studio: http://127.0.0.1:54323\"",
+    "supabase:migration:new": "npx supabase migration new",
+
+    "db:generate": "pnpm --filter backend db:generate",
+    "db:migrate": "pnpm --filter backend db:migrate",
+    "db:seed": "pnpm --filter backend db:seed",
+    "db:studio": "pnpm --filter backend db:studio",
+    "postinstall": "pnpm db:generate",
+
+    "setup": "pnpm install && pnpm supabase:start && pnpm db:generate && echo \"セットアップ完了! pnpm dev で開発開始できます\""
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["@prisma/client", "@prisma/engines", "esbuild", "prisma"]
+  }
+}

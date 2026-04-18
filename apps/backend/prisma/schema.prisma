@@ -1,0 +1,611 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users         User[]
+  teams         Team[]
+  apiKeys       ApiKey[]
+  increments    Increment[]
+  longTermGoals LongTermGoal[]
+  sprints       Sprint[]
+  sprintGoals   SprintGoal[]
+  tickets       Ticket[]
+  dsuLogs       DsuLog[]
+  systemSettings SystemSetting[]
+
+  @@map("organizations")
+}
+
+enum SystemRole {
+  ADMIN
+  MEMBER
+}
+
+enum TeamRole {
+  SCRUM_MASTER
+  PRODUCT_OWNER
+  DEVELOPER
+}
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String
+  name         String
+  role         SystemRole @default(MEMBER)
+  avatarUrl    String?
+  organizationId String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  organization     Organization      @relation(fields: [organizationId], references: [id])
+  teamMembers      TeamMember[]
+  assignedGoals    LongTermGoal[]    @relation("GoalAssignee")
+  assignedTickets  Ticket[]          @relation("TicketAssignee")
+  reportedTickets  Ticket[]          @relation("TicketReporter")
+  ticketComments   TicketComment[]
+  statusChanges    TicketStatusHistory[] @relation("StatusChanger")
+  dodCheckResults  DodCheckResult[]  @relation("DodChecker")
+  dsuStatuses      DsuMemberStatus[]
+  calendarEntries  TeamCalendar[]
+  memberCapacities MemberCapacity[]
+  proposedWARules     WorkingAgreementRule[]    @relation("WARuleProposer")
+  modifiedWARules     WorkingAgreementRule[]    @relation("WARuleModifier")
+  waHistoryChanges    WorkingAgreementHistory[] @relation("WAHistoryChanger")
+  retroItems          RetroItem[]               @relation("RetroItemAuthor")
+  retroVotes          RetroVote[]               @relation("RetroVoter")
+  retroActionAssignee RetroActionItem[]         @relation("RetroActionAssignee")
+  apiKeys             ApiKey[]                  @relation("ApiKeyCreator")
+
+  @@map("users")
+}
+
+enum VelocityMode {
+  STORY_POINTS
+  TICKET_COUNT
+}
+
+model Team {
+  id             String       @id @default(uuid())
+  name           String
+  organizationId String
+  ticketPrefix   String       @default("SCR")
+  velocityMode   VelocityMode @default(STORY_POINTS)
+  spDaysRatio    Float        @default(1.0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  members      TeamMember[]
+  increments   Increment[]
+  sprints      Sprint[]
+  ticketLabels TicketLabel[]
+  dodCheckItems DodCheckItem[]
+  calendarEntries TeamCalendar[]
+  waCategories    WorkingAgreementCategory[]
+  waRules         WorkingAgreementRule[]
+  retrospectives  Retrospective[]
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id       String   @id @default(uuid())
+  teamId   String
+  userId   String
+  role     TeamRole @default(DEVELOPER)
+  isOwner  Boolean  @default(false)
+  joinedAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([teamId, userId])
+  @@map("team_members")
+}
+
+model Increment {
+  id             String   @id @default(uuid())
+  name           String
+  startDate      DateTime
+  endDate        DateTime
+  description    String?
+  teamId         String
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  team         Team         @relation(fields: [teamId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  longTermGoals LongTermGoal[]
+  sprints      Sprint[]
+
+  @@map("increments")
+}
+
+enum GoalPriority {
+  MUST_HAVE
+  SHOULD_HAVE
+  NICE_TO_HAVE
+}
+
+enum GoalStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  ACHIEVED
+  NOT_ACHIEVED
+  PARTIALLY_ACHIEVED
+}
+
+enum CommitmentType {
+  COMMITTED
+  UNCOMMITTED
+}
+
+model LongTermGoal {
+  id             String         @id @default(uuid())
+  title          String
+  description    String?
+  priority       GoalPriority
+  status         GoalStatus     @default(NOT_STARTED)
+  commitment     CommitmentType @default(COMMITTED)
+  assigneeId     String?
+  incrementId    String
+  organizationId String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  assignee     User?        @relation("GoalAssignee", fields: [assigneeId], references: [id])
+  increment    Increment    @relation(fields: [incrementId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  sprintGoals  SprintGoal[]
+
+  @@map("long_term_goals")
+}
+
+enum SprintStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+model Sprint {
+  id             String       @id @default(uuid())
+  name           String
+  startDate      DateTime
+  endDate        DateTime
+  status         SprintStatus @default(PLANNED)
+  goal           String?
+  velocity       Float?
+  incrementId    String
+  teamId         String
+  organizationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  increment    Increment    @relation(fields: [incrementId], references: [id])
+  team         Team         @relation(fields: [teamId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  sprintGoals      SprintGoal[]
+  tickets          Ticket[]
+  dsuLogs          DsuLog[]
+  memberCapacities MemberCapacity[]
+  retrospectives   Retrospective[]
+
+  @@map("sprints")
+}
+
+enum SprintGoalStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  ACHIEVED
+  NOT_ACHIEVED
+}
+
+model SprintGoal {
+  id             String           @id @default(uuid())
+  title          String
+  description    String?
+  status         SprintGoalStatus @default(NOT_STARTED)
+  longTermGoalId String?
+  sprintId       String
+  organizationId String
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  longTermGoal LongTermGoal? @relation(fields: [longTermGoalId], references: [id])
+  sprint       Sprint        @relation(fields: [sprintId], references: [id])
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  tickets      Ticket[]
+
+  @@map("sprint_goals")
+}
+
+enum TicketType {
+  USER_STORY
+  TASK
+  BUG
+  SUBTASK
+}
+
+enum TicketStatus {
+  BACKLOG
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+}
+
+enum TicketPriority {
+  HIGHEST
+  HIGH
+  MEDIUM
+  LOW
+  LOWEST
+}
+
+model Ticket {
+  id             String         @id @default(uuid())
+  ticketNumber   Int            @default(autoincrement())
+  title          String
+  description    String?
+  type           TicketType
+  status         TicketStatus   @default(BACKLOG)
+  priority       TicketPriority @default(MEDIUM)
+  storyPoints    Int?
+  assigneeId     String?
+  reporterId     String
+  sprintId       String?
+  sprintGoalId   String?
+  parentId       String?
+  organizationId String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  assignee       User?                 @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  reporter       User                  @relation("TicketReporter", fields: [reporterId], references: [id])
+  sprint         Sprint?               @relation(fields: [sprintId], references: [id])
+  sprintGoal     SprintGoal?           @relation(fields: [sprintGoalId], references: [id])
+  parent         Ticket?               @relation("TicketSubtasks", fields: [parentId], references: [id])
+  subtasks       Ticket[]              @relation("TicketSubtasks")
+  organization   Organization          @relation(fields: [organizationId], references: [id])
+  statusHistory  TicketStatusHistory[]
+  comments       TicketComment[]
+  dodCheckResults DodCheckResult[]
+
+  @@map("tickets")
+}
+
+model TicketStatusHistory {
+  id          String       @id @default(uuid())
+  ticketId    String
+  fromStatus  TicketStatus?
+  toStatus    TicketStatus
+  changedById String
+  changedAt   DateTime     @default(now())
+
+  ticket     Ticket @relation(fields: [ticketId], references: [id])
+  changedBy  User   @relation("StatusChanger", fields: [changedById], references: [id])
+
+  @@map("ticket_status_history")
+}
+
+model TicketComment {
+  id        String   @id @default(uuid())
+  content   String
+  authorId  String
+  ticketId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author User   @relation(fields: [authorId], references: [id])
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+
+  @@map("ticket_comments")
+}
+
+model TicketLabel {
+  id        String   @id @default(uuid())
+  name      String
+  color     String
+  teamId    String
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id])
+
+  @@map("ticket_labels")
+}
+
+model DodCheckItem {
+  id          String   @id @default(uuid())
+  title       String
+  teamId      String
+  orderIndex  Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  team        Team             @relation(fields: [teamId], references: [id])
+  checkResults DodCheckResult[]
+
+  @@map("dod_check_items")
+}
+
+model DodCheckResult {
+  id          String    @id @default(uuid())
+  ticketId    String
+  dodItemId   String
+  checked     Boolean   @default(false)
+  checkedById String?
+  checkedAt   DateTime?
+
+  ticket    Ticket       @relation(fields: [ticketId], references: [id])
+  dodItem   DodCheckItem @relation(fields: [dodItemId], references: [id])
+  checkedBy User?        @relation("DodChecker", fields: [checkedById], references: [id])
+
+  @@unique([ticketId, dodItemId])
+  @@map("dod_check_results")
+}
+
+enum DsuMemberStatusType {
+  PRESENT
+  ABSENT
+  REMOTE
+}
+
+model DsuLog {
+  id             String   @id @default(uuid())
+  sprintId       String
+  date           DateTime @db.Date
+  notes          String?
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  sprint       Sprint          @relation(fields: [sprintId], references: [id])
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  memberStatuses DsuMemberStatus[]
+
+  @@unique([sprintId, date])
+  @@map("dsu_logs")
+}
+
+model DsuMemberStatus {
+  id        String              @id @default(uuid())
+  dsuLogId  String
+  userId    String
+  yesterday String?
+  today     String?
+  blockers  String?
+  status    DsuMemberStatusType @default(PRESENT)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  dsuLog DsuLog @relation(fields: [dsuLogId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([dsuLogId, userId])
+  @@map("dsu_member_statuses")
+}
+
+model TeamCalendar {
+  id        String   @id @default(uuid())
+  teamId    String
+  userId    String
+  date      DateTime @db.Date
+  reason    String?
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("team_calendars")
+}
+
+model MemberCapacity {
+  id            String   @id @default(uuid())
+  sprintId      String
+  userId        String
+  availableDays Float
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sprint Sprint @relation(fields: [sprintId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([sprintId, userId])
+  @@map("member_capacities")
+}
+
+model SystemSetting {
+  id             String   @id @default(uuid())
+  organizationId String
+  key            String
+  value          String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, key])
+  @@map("system_settings")
+}
+
+model WorkingAgreementCategory {
+  id         String   @id @default(uuid())
+  teamId     String
+  name       String
+  orderIndex Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  team  Team                   @relation(fields: [teamId], references: [id])
+  rules WorkingAgreementRule[]
+
+  @@unique([teamId, name])
+  @@map("working_agreement_categories")
+}
+
+model WorkingAgreementRule {
+  id               String   @id @default(uuid())
+  teamId           String
+  categoryId       String?
+  title            String
+  description      String?
+  isActive         Boolean  @default(true)
+  agreedAt         DateTime @db.Date
+  proposedById     String
+  lastModifiedById String
+  orderIndex       Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  team           Team                      @relation(fields: [teamId], references: [id])
+  category       WorkingAgreementCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  proposedBy     User                      @relation("WARuleProposer", fields: [proposedById], references: [id])
+  lastModifiedBy User                      @relation("WARuleModifier", fields: [lastModifiedById], references: [id])
+  history        WorkingAgreementHistory[]
+
+  @@map("working_agreement_rules")
+}
+
+enum WAChangeType {
+  CREATED
+  UPDATED
+  ACTIVATED
+  DEACTIVATED
+}
+
+model WorkingAgreementHistory {
+  id         String       @id @default(uuid())
+  ruleId     String
+  changedById String
+  changedAt  DateTime     @default(now())
+  changeType WAChangeType
+  fieldName  String?
+  oldValue   String?
+  newValue   String?
+
+  rule      WorkingAgreementRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  changedBy User                @relation("WAHistoryChanger", fields: [changedById], references: [id])
+
+  @@map("working_agreement_history")
+}
+
+// ============================================================
+// Retrospective
+// ============================================================
+
+enum RetroActionStatus {
+  OPEN
+  DONE
+}
+
+enum RetroMode {
+  CARD
+  BOARD
+}
+
+model Retrospective {
+  id        String    @id @default(uuid())
+  teamId    String
+  sprintId  String?
+  title     String
+  format    String    @default("KPT")
+  mode      RetroMode @default(CARD)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime @updatedAt
+
+  team    Team     @relation(fields: [teamId], references: [id])
+  sprint  Sprint?  @relation(fields: [sprintId], references: [id])
+  items   RetroItem[]
+  actions RetroActionItem[]
+
+  @@map("retrospectives")
+}
+
+model RetroItem {
+  id              String        @id @default(uuid())
+  retrospectiveId String
+  type            String
+  body            String
+  authorId        String
+  orderIndex      Int           @default(0)
+  posX            Float         @default(0)
+  posY            Float         @default(0)
+  fontSize        Int           @default(14)
+  fontColor       String        @default("#e2e8f0")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  retrospective Retrospective @relation(fields: [retrospectiveId], references: [id], onDelete: Cascade)
+  author        User          @relation("RetroItemAuthor", fields: [authorId], references: [id])
+  votes         RetroVote[]
+
+  @@map("retro_items")
+}
+
+model RetroVote {
+  id     String @id @default(uuid())
+  itemId String
+  userId String
+
+  item RetroItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user User      @relation("RetroVoter", fields: [userId], references: [id])
+
+  @@unique([itemId, userId])
+  @@map("retro_votes")
+}
+
+model RetroActionItem {
+  id              String            @id @default(uuid())
+  retrospectiveId String
+  title           String
+  assigneeId      String?
+  status          RetroActionStatus @default(OPEN)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  retrospective Retrospective @relation(fields: [retrospectiveId], references: [id], onDelete: Cascade)
+  assignee      User?         @relation("RetroActionAssignee", fields: [assigneeId], references: [id])
+
+  @@map("retro_action_items")
+}
+
+// ============================================================
+// API Keys
+// ============================================================
+
+model ApiKey {
+  id             String    @id @default(uuid())
+  name           String
+  keyHash        String    @unique
+  keyPrefix      String
+  organizationId String
+  createdById    String
+  lastUsedAt     DateTime?
+  expiresAt      DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  createdBy    User         @relation("ApiKeyCreator", fields: [createdById], references: [id])
+
+  @@map("api_keys")
+}
