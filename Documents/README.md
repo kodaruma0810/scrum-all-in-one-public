@@ -64,26 +64,103 @@
 
 | ソフトウェア | 用途 | インストール先 |
 |-------------|------|---------------|
-| **Docker Desktop** | アプリの実行環境 | https://www.docker.com/products/docker-desktop/ |
+| **Docker Desktop** | Supabase（ローカルDB）の実行に必要 | https://www.docker.com/products/docker-desktop/ |
 | **Git** | ソースコードの取得 | https://git-scm.com/ |
+| **Node.js** | 20以上。JavaScript 実行環境 | https://nodejs.org/ |
+| **pnpm** | 8以上。パッケージマネージャー | https://pnpm.io/ |
 
-> **ポイント**: Docker さえあれば動きます。Node.js などの個別インストールは不要です。
-
-### ローカル開発もしたい場合（追加で必要）
-
-| ソフトウェア | バージョン | 用途 |
-|-------------|-----------|------|
-| **Node.js** | 20以上 | JavaScript 実行環境 |
-| **pnpm** | 8以上 | パッケージマネージャー |
-| **Supabase CLI** | 最新 | ローカルDB環境 |
+> **ポイント**: Supabase CLI は npx 経由で自動インストールされるため、個別インストールは不要です。
 
 ---
 
 ## 3. 起動・停止のやり方
 
-### 方法A: Docker で動かす（おすすめ）
+### 開発環境（ローカル開発）
 
-本番に近い構成で動きます。コードを変更しない場合はこちらが簡単です。
+コードを書き換えながら開発する場合の手順です。ファイルを保存すると自動で反映されます。
+
+#### 初回セットアップ
+
+```bash
+# 1. プロジェクトのフォルダに移動
+cd scrum-all-in-one
+
+# 2. 依存パッケージのインストール
+pnpm install
+
+# 3. 環境変数ファイルを作成（初回のみ）
+cp .env.example .env.local
+
+# 4. ローカルのデータベースを起動（Supabase）
+pnpm supabase:start
+
+# 5. Prisma クライアントを生成
+pnpm db:generate
+
+# 6. データベースのマイグレーション
+pnpm db:migrate
+
+# 7. 初期データの投入（初回のみ）
+pnpm db:seed
+
+# 8. 開発サーバーを起動
+pnpm dev
+```
+
+#### 2回目以降の起動
+
+```bash
+# 1. Docker Desktop を起動（起動していなければ）
+# 2. Supabase を起動
+pnpm supabase:start
+
+# 3. 開発サーバーを起動
+pnpm dev
+```
+
+#### 停止
+
+```bash
+# Ctrl+C で開発サーバーを停止した後
+pnpm supabase:stop
+```
+
+#### 開発サーバーのアクセス先
+
+- フロントエンド: `http://localhost:5173`
+- バックエンド API: `http://localhost:4000`
+- **Supabase Studio（DB管理画面）: `http://127.0.0.1:54323`**
+
+> Supabase Studio でテーブルの中身をブラウザから閲覧・編集できます。
+
+#### データベースをリセットしたい場合
+
+```bash
+pnpm supabase:reset
+```
+
+> マイグレーションが再実行され、シードデータも再投入されます。
+
+#### 便利コマンド
+
+| コマンド | 何をする？ |
+|---------|-----------|
+| `pnpm dev` | フロントエンド＆バックエンドを同時起動 |
+| `pnpm dev:frontend` | フロントエンドだけ起動 |
+| `pnpm dev:backend` | バックエンドだけ起動 |
+| `pnpm supabase:start` | ローカルDB（Supabase）を起動 |
+| `pnpm supabase:stop` | ローカルDBを停止 |
+| `pnpm supabase:reset` | DBをリセット（データ全削除＋再作成） |
+| `pnpm supabase:status` | Supabase の起動状態を確認 |
+| `pnpm db:studio` | Prisma Studio を起動（もう一つのDB管理画面） |
+| `pnpm build` | 本番用にビルド |
+
+---
+
+### セルフホスト（本番デプロイ）
+
+Docker Compose を使って本番環境にデプロイする場合の手順です。
+開発には使いません。
 
 #### 初回起動（セットアップ含む）
 
@@ -138,7 +215,7 @@ docker compose down -v
 | `docker compose logs -f backend` | バックエンドだけのログを見る |
 | `docker compose restart backend` | バックエンドだけ再起動する |
 
-#### Docker 起動時のサービス構成
+#### セルフホスト時のサービス構成
 
 ```
 ブラウザ
@@ -152,56 +229,6 @@ docker compose down -v
 ```
 
 > ブラウザからは `http://localhost` でアクセスできます。
-> ポート番号なしでアクセスできるのは、Nginx がポート80（HTTPの標準ポート）で受けているからです。
-
----
-
-### 方法B: ローカル開発サーバーで動かす
-
-コードを書き換えながら開発する場合はこちら。ファイルを保存すると自動で反映されます。
-
-```bash
-# 1. 依存パッケージのインストール
-pnpm install
-
-# 2. ローカルのデータベースを起動（Supabase）
-pnpm supabase:start
-
-# 3. Prisma クライアントを生成
-pnpm db:generate
-
-# 4. データベースのマイグレーション
-pnpm db:migrate
-
-# 5. 初期データの投入（初回のみ）
-pnpm db:seed
-
-# 6. 開発サーバーを起動
-pnpm dev
-```
-
-または、まとめてセットアップ：
-
-```bash
-pnpm setup    # 1〜4をまとめて実行
-pnpm dev      # 開発サーバー起動
-```
-
-開発サーバーのアクセス先：
-- フロントエンド: `http://localhost:5173`
-- バックエンド API: `http://localhost:4000`
-
-#### ローカル開発の便利コマンド
-
-| コマンド | 何をする？ |
-|---------|-----------|
-| `pnpm dev` | フロントエンド＆バックエンドを同時起動 |
-| `pnpm dev:frontend` | フロントエンドだけ起動 |
-| `pnpm dev:backend` | バックエンドだけ起動 |
-| `pnpm db:studio` | データベースの中身をブラウザで見る（Prisma Studio） |
-| `pnpm supabase:studio` | Supabase のダッシュボードを開く |
-| `pnpm supabase:stop` | ローカルDBを停止 |
-| `pnpm build` | 本番用にビルド |
 
 ---
 
