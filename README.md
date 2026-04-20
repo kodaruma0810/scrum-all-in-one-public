@@ -82,15 +82,18 @@ pnpm --version   # 8 以上であること
 
 ```bash
 git clone https://github.com/kodaruma0810/scrum-all-in-one-public.git
-cd scrum-all-in-one
+cd scrum-all-in-one-public
 pnpm install
 cp .env.example .env.local
+echo "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres" > apps/backend/.env
 pnpm supabase:start
 pnpm db:generate
 pnpm db:migrate
 pnpm db:seed
 pnpm dev
 ```
+
+> **補足:** `apps/backend/.env` は Prisma CLI がデータベース接続に使用します。`.env.local` だけでは `pnpm db:migrate` 等でエラーになります。
 
 - フロントエンド: `http://localhost:5173`
 - バックエンド API: `http://localhost:4000`
