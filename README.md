@@ -81,7 +81,7 @@ pnpm --version   # 8 以上であること
 ### 起動
 
 ```bash
-git clone https://github.com/kodaruma0810/scrum-all-in-one.git
+git clone https://github.com/kodaruma0810/scrum-all-in-one-public.git
 cd scrum-all-in-one
 pnpm install
 cp .env.example .env.local
